@@ -10,7 +10,7 @@
 The project was built to solve a specific problem: **Visualizing SQL transformations without the "spaghetti" mess.**
 
 > [!IMPORTANT]
-> **Origins:** ab.js was originally developed as a core feature of **Redshift Lens**. Due to its high performance and reliability, the engine was later decoupled and made generic, allowing it to be used in any data lineage or DAG-based application.
+> **Origins:** ab.js was originally developed as a core feature of [**Redshift Lens**](https://github.com/bh00t/Redshift-Lens). Due to its high performance and reliability, the engine was later decoupled and made generic, allowing it to be used in any data lineage or DAG-based application.
 
 ## Interactive Features
 
@@ -25,7 +25,7 @@ The engine provides a premium, "IDE-like" experience for data engineers:
 ## Architecture
 The engine logic is strictly modular, separating data processing from coordinate math and canvas painting.
 
-![architecture](renderer__html5_canvas___ab_js.png)
+![architecture](architecture.png)
 
 ### Modular Components
 
