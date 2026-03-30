@@ -246,6 +246,11 @@
       try { 
           const val = document.getElementById('json-input').value;
           graph.loadData(JSON.parse(val)); 
+          
+          // ---> ADD THIS LINE <---
+          // This tells the UI to recount the nodes and UNLOCK the download button!
+          updateDashboardUI(); 
+
           document.getElementById('json-modal').style.display = 'none'; 
           document.getElementById('json-error').style.display = 'none';
       } catch (e) { 

@@ -847,27 +847,57 @@ class LineageApp {
     const nodes = Object.values(this.state.nodes); 
     if (!nodes.length) return;
     
-    // Calculate bounding box of entire graph
+    // 1. Calculate bounding box
     const pad = 100;
-    const x0 = Math.min(...nodes.map(n => n.x)) - pad; const y0 = Math.min(...nodes.map(n => n.y)) - pad;
-    const x1 = Math.max(...nodes.map(n => n.x + n.w)) + pad; const y1 = Math.max(...nodes.map(n => n.y + n.h)) + pad;
+    const x0 = Math.min(...nodes.map(n => n.x)) - pad; 
+    const y0 = Math.min(...nodes.map(n => n.y)) - pad;
+    const x1 = Math.max(...nodes.map(n => n.x + n.w)) + pad; 
+    const y1 = Math.max(...nodes.map(n => n.y + n.h)) + pad;
     
-    const ew = x1 - x0; const eh = y1 - y0;
-    const canvas = document.createElement('canvas'); const dpr = 2; 
-    canvas.width = ew * dpr; canvas.height = eh * dpr;
-    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr); 
-    ctx.fillStyle = this.isDark ? '#0f172a' : '#f8fafc'; ctx.fillRect(0, 0, ew, eh); // Explicit solid background
+    const ew = x1 - x0; 
+    const eh = y1 - y0;
+    
+    const canvas = document.createElement('canvas'); 
+    const dpr = 2; 
+    canvas.width = ew * dpr; 
+    canvas.height = eh * dpr;
+    const ctx = canvas.getContext('2d'); 
+    ctx.scale(dpr, dpr); 
+    
+    // 2. Background
+    ctx.fillStyle = this.isDark ? '#0f172a' : '#f8fafc'; 
+    ctx.fillRect(0, 0, ew, eh);
     
     const v = { x: -x0, y: -y0, s: 1 }; 
     if (this.customBackgroundFn) this.customBackgroundFn(ctx, ew, eh, v, this.isDark);
     
+    // 3. Setup temporary renderer
     const exportCanvasRenderer = Object.assign(Object.create(Object.getPrototypeOf(this.renderer)), this.renderer); 
-    exportCanvasRenderer.ctx = ctx; exportCanvasRenderer.cw = ew; exportCanvasRenderer.ch = eh;
-    exportCanvasRenderer.draw(this.state, v, { dir: this.interaction.dir, selectedNodes: this.interaction.selectedNodes, pinnedNodes: this.interaction.pinnedNodes, hovNode: null, marquee: null });
+    exportCanvasRenderer.ctx = ctx; 
+    exportCanvasRenderer.cw = ew; 
+    exportCanvasRenderer.ch = eh;
     
+    // 4. FIX 1: Pass all required variables to draw() to prevent silent crashes
+    exportCanvasRenderer.draw(this.state, v, { 
+        dir: this.interaction.dir, 
+        selectedNodes: this.interaction.selectedNodes, 
+        pinnedNodes: this.interaction.pinnedNodes, 
+        hovNode: null, 
+        marquee: null,
+        lineStyle: this.interaction.lineStyle || 'curve' 
+    });
+    
+    // 5. FIX 2: Attach to body to bypass browser security blockers!
     const link = document.createElement('a'); 
-    let safeTitle = (document.getElementById('page-title')?.textContent || 'ab_export').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    link.download = safeTitle + '.png'; link.href = canvas.toDataURL(); link.click();
+    let rawTitle = document.getElementById('page-title')?.textContent || 'lineage_export';
+    let safeTitle = rawTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    
+    link.download = safeTitle + '.png'; 
+    link.href = canvas.toDataURL('image/png'); 
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   // Screen-to-World: Convert mouse coordinates into data coordinates
