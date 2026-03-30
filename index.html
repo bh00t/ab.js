@@ -127,7 +127,6 @@
   <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
     <div class="btn-group">
       <a href="https://github.com/bh00t/ab.js" target="_blank" class="tb-btn" style="padding: 0 8px; text-decoration: none;">
-        <!-- Standard Solid GitHub Icon for better visibility -->
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.041-1.416-4.041-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
         </svg>
@@ -165,7 +164,109 @@
   </div>
 </div>
 
-<!-- Importing the core engine -->
 <script src="ab.js"></script>
+
+<script>
+  // Define default data
+  const localData = { "main": "", "nodes": [], "edges": [] };
+
+  // Instantiate the decoupled engine
+  const graph = new LineageApp(localData, 'cv', { background: 'dot' });
+
+  // 2. Create a UI updater function for the host app
+  function updateDashboardUI() {
+      // Find the main node (if one exists)
+      const selfNode = Object.values(graph.state.nodes).find(n => n.self);
+      const titleStr = selfNode ? `${selfNode.schema ? selfNode.schema + '.' : ''}${selfNode.name}` : `ab.js`;
+      
+      // Host app safely controls its own tab title and header!
+      document.title = titleStr;
+      document.getElementById('page-title').textContent = titleStr;
+      
+      // Update stats and export button
+      const nodeCount = Object.keys(graph.state.nodes).length;
+      document.getElementById('btn-export-png').disabled = nodeCount === 0;
+      document.getElementById('stats-counter').textContent = `${nodeCount} nodes · ${graph.state.edges.length} edges`;
+  }
+
+  // 3. Call it once on initial load
+  updateDashboardUI();
+
+  // Wire up the basic buttons
+  document.getElementById('btn-zoom-in').onclick = () => graph.doZoom(1.15);
+  document.getElementById('btn-zoom-out').onclick = () => graph.doZoom(0.87);
+  document.getElementById('btn-reset').onclick = () => graph.resetLayout();
+  document.getElementById('btn-fit').onclick = () => graph.fitView();
+  document.getElementById('btn-export-png').onclick = () => graph.exportPNG();
+  document.getElementById('layout-select').onchange = (e) => graph.setDirection(e.target.value);
+
+  // Wire up the Pan/Select Toggle Button
+  // Wire up the Pan/Select Toggle Button
+  const mBtn = document.getElementById('btn-mode-toggle'); 
+  mBtn.onclick = function() { 
+    // Check what mode we are CURRENTLY in before switching
+    const isCurrentlyPan = graph.interaction.toolMode === 'pan'; 
+    
+    // Toggle the mode inside the engine
+    graph.interaction.toolMode = isCurrentlyPan ? 'select' : 'pan'; 
+    
+    // BUG FIX 1: If we are switching back to Pan mode, explicitly clear 
+    // any stuck blue selections so the graph resets visually!
+    if (!isCurrentlyPan) {
+        graph.interaction.selectedNodes.clear();
+        graph.scheduleRender();
+    }
+
+    const panIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>';
+    const selectIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-dasharray="5 5"></rect></svg>';
+    
+    // Swap the SVG Icon
+    this.innerHTML = isCurrentlyPan ? selectIcon : panIcon; 
+    
+    // BUG FIX 2: Only highlight the button blue if Select mode is NOW active
+    this.classList.toggle('active', isCurrentlyPan); 
+    
+    // Update the mouse cursor
+    const wrap = document.getElementById('canvas-wrap');
+    if (wrap) wrap.style.cursor = isCurrentlyPan ? 'default' : 'grab'; 
+  };
+
+  // Wire up the Custom JSON Loader Modals
+  document.getElementById('btn-load-json').onclick = () => { 
+      const input = document.getElementById('json-input');
+      input.value = JSON.stringify(localData, null, 2); 
+      document.getElementById('json-modal').style.display = 'flex'; 
+  };
+  
+  document.getElementById('btn-cancel-json').onclick = () => {
+      document.getElementById('json-modal').style.display = 'none';
+  };
+  
+  document.getElementById('btn-render-json').onclick = () => { 
+      try { 
+          const val = document.getElementById('json-input').value;
+          graph.loadData(JSON.parse(val)); 
+          document.getElementById('json-modal').style.display = 'none'; 
+          document.getElementById('json-error').style.display = 'none';
+      } catch (e) { 
+          const err = document.getElementById('json-error');
+          err.textContent = e.message; 
+          err.style.display = 'block';
+      } 
+  };
+
+  // Wire up the Theme Toggle
+  document.getElementById('btn-theme-toggle').onclick = function() {
+      graph.isDark = !graph.isDark; 
+      document.body.classList.toggle('dark', graph.isDark);
+      
+      const moonIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+      const sunIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
+      this.innerHTML = graph.isDark ? sunIcon : moonIcon;
+      
+      Config.BaseColors = graph.isDark ? Config.DarkColors : Config.LightColors; 
+      graph.scheduleRender();
+  };
+</script>
 </body>
 </html>
