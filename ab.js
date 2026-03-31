@@ -809,11 +809,16 @@ class LineageApp {
     }
   }
 
-  loadData(inputData, forceDir = null) {
+loadData(inputData, forceDir = null) {
     if(!inputData) return;
     this.state = DataParser.parse(inputData); 
+    
+    // --- BUG FIX: Completely clear all interaction memory ---
     this.interaction.hovNode = null; 
     this.interaction.selectedNodes.clear();
+    this.interaction.pinnedNodes.clear(); // <-- The missing logic!
+    this.interaction.marquee = null;
+    this.interaction.dragData = null;
     
     this.buildTypeRegistry(this.state.nodes);
     this.state.typeRegistry = this.typeRegistry; 
